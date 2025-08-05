@@ -24,6 +24,9 @@ dependencies:
   
   # URL açma için
   url_launcher: ^6.3.2
+  
+  # Web view için
+  webview_flutter: ^4.13.0
 
 dev_dependencies:
   flutter_test:

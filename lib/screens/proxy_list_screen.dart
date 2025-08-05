@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../models/proxy_server.dart';
 import '../services/proxy_storage_service.dart';
 import '../widgets/proxy_card.dart';
 import '../widgets/custom_app_bar.dart';
 import 'add_proxy_screen.dart';
+import 'web_view_screen.dart';
 
 class ProxyListScreen extends StatefulWidget {
   const ProxyListScreen({super.key});
@@ -137,98 +137,11 @@ class _ProxyListScreenState extends State<ProxyListScreen> {
     );
   }
 
-  Future<void> _openProxyUrl(ProxyServer proxy) async {
-    String url = proxy.address.trim();
-
-    // URL formatını düzenle
-    if (!url.startsWith('http://') && !url.startsWith('https://')) {
-      // Eğer URL protokol ile başlamıyorsa, https ekle
-      if (url.contains('.') && !url.contains('/')) {
-        // Basit domain: youtube.com
-        url = 'https://$url';
-      } else if (url.contains('.') && url.contains('/')) {
-        // Domain with path: youtube.com/watch?v=xyz
-        url = 'https://$url';
-      } else if (RegExp(r'^(?:[0-9]{1,3}\.){3}[0-9]{1,3}').hasMatch(url)) {
-        // IP adresi: 192.168.1.100 veya 192.168.1.100:8080
-        url = 'http://$url';
-      } else {
-        // Diğer durumlar için https dene
-        url = 'https://$url';
-      }
-    }
-
-    try {
-      final Uri uri = Uri.parse(url);
-
-      // Önce direkt açmayı dene
-      bool launched = false;
-
-      try {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-        launched = true;
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('${proxy.name} açılıyor: $url'),
-              backgroundColor: Colors.green,
-              duration: const Duration(seconds: 2),
-            ),
-          );
-        }
-      } catch (e) {
-        launched = false;
-      }
-
-      // İlk deneme başarısızsa, http ile dene
-      if (!launched && url.startsWith('https://')) {
-        final httpUrl = url.replaceFirst('https://', 'http://');
-        try {
-          final httpUri = Uri.parse(httpUrl);
-          await launchUrl(httpUri, mode: LaunchMode.externalApplication);
-          launched = true;
-
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('${proxy.name} açılıyor: $httpUrl'),
-                backgroundColor: Colors.green,
-                duration: const Duration(seconds: 2),
-              ),
-            );
-          }
-        } catch (e) {
-          launched = false;
-        }
-      }
-
-      // Hiçbiri işe yaramazsa hata göster
-      if (!launched && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${proxy.name} açılamadı. URL: ${proxy.address}'),
-            backgroundColor: Colors.red,
-            action: SnackBarAction(
-              label: 'Kopyala',
-              textColor: Colors.white,
-              onPressed: () {
-                // URL'i panoya kopyalayabilir
-              },
-            ),
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Geçersiz URL: ${proxy.address}'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
+  void _openProxyUrl(ProxyServer proxy) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => WebViewScreen(proxy: proxy)),
+    );
   }
 
   Widget _buildProxyList() {
