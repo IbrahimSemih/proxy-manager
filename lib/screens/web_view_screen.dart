@@ -16,6 +16,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
   late final WebViewController controller;
   bool isLoading = true;
   String? error;
+  String? processedUrl;
 
   @override
   void initState() {
@@ -25,19 +26,40 @@ class _WebViewScreenState extends State<WebViewScreen> {
 
   void _initializeWebView() {
     String url = widget.proxy.address.trim();
+    print('Orijinal proxy adresi: "${widget.proxy.address}"');
+    print('Temizlenmiş adres: "$url"');
+
+    // @ işaretini kaldır (eski formatlar için)
+    if (url.startsWith('@')) {
+      url = url.substring(1);
+      print('@ işareti kaldırıldı: "$url"');
+    }
 
     // URL formatını düzenle
     if (!url.startsWith('http://') && !url.startsWith('https://')) {
       if (url.contains('.') &&
           !RegExp(r'^(?:[0-9]{1,3}\.){3}[0-9]{1,3}').hasMatch(url)) {
         url = 'https://$url';
+        print('HTTPS eklendi: "$url"');
       } else {
         url = 'http://$url';
+        print('HTTP eklendi: "$url"');
       }
     }
 
+    // Debug: İşlenen URL'yi logla
+    print('Final URL: "$url"');
+
+    // İşlenen URL'yi state'e kaydet
+    setState(() {
+      processedUrl = url;
+    });
+
     controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setUserAgent(
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+      )
       ..setNavigationDelegate(
         NavigationDelegate(
           onProgress: (int progress) {
@@ -55,14 +77,35 @@ class _WebViewScreenState extends State<WebViewScreen> {
             });
           },
           onWebResourceError: (WebResourceError error) {
+            print('=== WebView Hatası ===');
+            print('Açıklama: ${error.description}');
+            print('Hata Kodu: ${error.errorCode}');
+            print('Hata URL: ${error.url}');
+            print('Hata Türü: ${error.errorType}');
+            print('=====================');
             setState(() {
-              this.error = error.description;
+              String errorMsg = 'Bağlantı hatası: ${error.description}';
+              if (error.errorCode == -2) {
+                errorMsg = 'İnternet bağlantısı yok veya sunucu erişilemiyor';
+              } else if (error.errorCode == -1) {
+                errorMsg = 'Sunucu bulunamadı veya DNS hatası';
+              }
+              this.error = errorMsg;
               isLoading = false;
             });
           },
         ),
-      )
-      ..loadRequest(Uri.parse(url));
+      );
+
+    try {
+      controller.loadRequest(Uri.parse(url));
+    } catch (e) {
+      print('URI Parse Hatası: $e');
+      setState(() {
+        error = 'Geçersiz URL formatı: $url';
+        isLoading = false;
+      });
+    }
   }
 
   void _reload() {
@@ -82,6 +125,29 @@ class _WebViewScreenState extends State<WebViewScreen> {
   void _goForward() async {
     if (await controller.canGoForward()) {
       controller.goForward();
+    }
+  }
+
+  void _testConnection() async {
+    print('Bağlantı testi başlatılıyor...');
+
+    // Önce Google'a bağlanıp internet olup olmadığını test et
+    try {
+      await controller.loadRequest(Uri.parse('https://www.google.com'));
+      print('Google\'a bağlanma başarılı - İnternet var');
+
+      // Google yüklendikten sonra hedef URL'yi dene
+      Future.delayed(const Duration(seconds: 2), () {
+        if (processedUrl != null) {
+          print('Hedef URL test ediliyor: $processedUrl');
+          controller.loadRequest(Uri.parse(processedUrl!));
+        }
+      });
+    } catch (e) {
+      print('Google\'a bağlanma başarısız: $e');
+      setState(() {
+        error = 'İnternet bağlantısı bulunamadı';
+      });
     }
   }
 
@@ -140,7 +206,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            widget.proxy.address,
+                            processedUrl ?? widget.proxy.address,
                             style: const TextStyle(fontSize: 14),
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -210,10 +276,42 @@ class _WebViewScreenState extends State<WebViewScreen> {
               textAlign: TextAlign.center,
               style: TextStyle(color: Colors.grey[600], fontSize: 14),
             ),
+            const SizedBox(height: 8),
+            if (processedUrl != null)
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  'Denenen URL: $processedUrl',
+                  style: const TextStyle(fontSize: 12, fontFamily: 'monospace'),
+                ),
+              ),
             const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: _reload,
-              child: const Text('Tekrar Dene'),
+            Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    ElevatedButton(
+                      onPressed: _reload,
+                      child: const Text('Tekrar Dene'),
+                    ),
+                    const SizedBox(width: 16),
+                    OutlinedButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('Geri Dön'),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                OutlinedButton(
+                  onPressed: _testConnection,
+                  child: const Text('Bağlantıyı Test Et'),
+                ),
+              ],
             ),
           ],
         ),

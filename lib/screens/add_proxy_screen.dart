@@ -41,17 +41,19 @@ class _AddProxyScreenState extends State<AddProxyScreen> {
 
     final trimmedValue = value.trim();
 
-    // IP adresi kontrolü (port ile birlikte)
-    final ipRegex = RegExp(r'^(?:[0-9]{1,3}\.){3}[0-9]{1,3}(:[0-9]+)?$');
-
-    // Basit domain kontrolü
-    final domainRegex = RegExp(
-      r'^[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9]?(\.[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9]?)*$',
+    // IP adresi kontrolü (port ile birlikte) - Geçerli IP aralığı kontrolü
+    final ipRegex = RegExp(
+      r'^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(:[0-9]+)?$',
     );
 
-    // URL kontrolü (http/https ile başlayan)
+    // Basit domain kontrolü - En az bir harf içermeli
+    final domainRegex = RegExp(
+      r'^(?=.*[a-zA-Z])[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9]?(\.[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9]?)*$',
+    );
+
+    // URL kontrolü (http/https ile başlayan) - Domain ve IP destekli
     final urlRegex = RegExp(
-      r'^https?:\/\/(www\.)?[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9]?(\.[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9]?)*(\/.*)?$',
+      r'^https?:\/\/((www\.)?[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9]?(\.[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9]?)*|(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))(:[0-9]+)?(\/.*)?$',
     );
 
     // www ile başlayan domain kontrolü
@@ -125,7 +127,7 @@ class _AddProxyScreenState extends State<AddProxyScreen> {
       ),
       body: Form(
         key: _formKey,
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.all(24.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -173,7 +175,7 @@ class _AddProxyScreenState extends State<AddProxyScreen> {
                 controller: _addressController,
                 validator: _validateAddress,
                 decoration: const InputDecoration(
-                  hintText: '146.26.21.72/smart/elektrikHes',
+                  hintText: 'http://213.248.190.61:72/smart/',
                   border: OutlineInputBorder(),
                   contentPadding: EdgeInsets.symmetric(
                     horizontal: 16,
@@ -189,17 +191,23 @@ class _AddProxyScreenState extends State<AddProxyScreen> {
                 style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
               ),
               const SizedBox(height: 8),
-              const Text(
-                '• IP → 192.168.1.100\n'
-                '• IP:Port → 192.168.1.100:8080\n'
-                '• Domain → example.com\n'
-                '• www Domain → www.youtube.com\n'
-                '• URL → https://www.youtube.com\n'
-                '• Path → example.com/path/to/resource',
-                style: TextStyle(color: Colors.grey, fontSize: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.grey.shade300),
+                ),
+                child: const Text(
+                  '• IP → 192.168.1.100\n'
+                  '• Domain → example.com\n'
+                  '• URL → https://www.youtube.com\n'
+                  '• Proxy → http://213.248.190.61:72/smart/',
+                  style: TextStyle(color: Colors.grey, fontSize: 12),
+                ),
               ),
 
-              const Spacer(),
+              const SizedBox(height: 40),
 
               // Kaydet butonu
               SizedBox(
@@ -233,6 +241,7 @@ class _AddProxyScreenState extends State<AddProxyScreen> {
                         ),
                 ),
               ),
+              const SizedBox(height: 24), // Alt boşluk eklendi
             ],
           ),
         ),
